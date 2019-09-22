@@ -34,6 +34,7 @@ public class AuthMgt {
     AppConfig appConfig;
 
     private ConcurrentHashMap<String, Login> loginMap = new ConcurrentHashMap<>();
+    private HashSet<String> activeTokens = new HashSet<>();
 
     private static final Random RANDOM = new SecureRandom();
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -57,8 +58,9 @@ public class AuthMgt {
 
 
     // #########################
-    // New user registration -
+    // lifecycle step #1: new user registration -
     // create new login with temporary password and generate temporary token:
+    // result: new login, new temporary encrypted password, new salt
     // #########################
     public Boolean addNewLogin(HttpServletRequest request, String username, String psw, int expireInDays) {
         String salt = getSalt();
@@ -71,13 +73,47 @@ public class AuthMgt {
         return true;
     }
 
+    // #########################
+    // lifecycle step #2: user puts real password  -
+    // and gets first token
+    // result: new active token, new encrypted password, new salt, new expire
+    // #########################
+    public String tryChangePsw(HttpServletRequest request, Login login, String oldPassword, String newPassword) {
+        String token = tryCreateToken(login, oldPassword);
+        if (token == null) {
+            return null;
+        }
+        String salt = getSalt();
+        login.setSalt(salt);
+        String encryptedPassword = generateSecurePassword(newPassword, salt);
+        login.setEncriptedPassword(encryptedPassword);
+        saveLogin(request, login);
+        return token;
+    }
 
     // #########################
-    // Authentication Functions:
+    // lifecycle step #3: token has expired  -
+    // user puts password for getting new token
+    // result: new active token, remove old token, new expire
     // #########################
+    public String tryRefreshToken(HttpServletRequest request, Login login, String password) {
+        String token = tryCreateToken(login, password);
+        if (token == null) {
+            return null;
+        }
+        saveLogin(request, login);
+        return token;
+    }
 
+
+
+    // #########################
+    // lifecycle step #4: regular user requests  -
+    // check access to database connectors
     // returns HTTP-status code if authentication == fail or
     // null if authentication == success
+    // #########################
+
     public ResponseEntity<String> checkAuthentication(HttpServletRequest request) {
         switch (AUTH_MODE) {
             case NONE:
@@ -107,7 +143,7 @@ public class AuthMgt {
         ResponseEntity<String> res;
         JwtStatusEnum status = JwtStatusEnum.UnAuhorized;
         try {
-            if (!AuthSessionListener.isAuthenticated(request.getSession().getId())) {
+            if (!isAuthenticated(request)) {
                 try {
                     status = doAuthentication(request);
                 }catch (Exception ignored) {
@@ -121,6 +157,14 @@ public class AuthMgt {
             return new ResponseEntity<>("Something Wrong",new HttpHeaders(),HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return null;
+    }
+
+    private Boolean isAuthenticated(HttpServletRequest request) {
+        String token = request.getHeader(HEADER_STRING);
+        if (token != null) {
+            return activeTokens.contains(token);
+        }
+        return false;
     }
 
     private JwtStatusEnum doAuthentication(HttpServletRequest request) {
@@ -143,7 +187,6 @@ public class AuthMgt {
         responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
         switch (status){
             case Authorized:
-                AuthSessionListener.setAuthenticated(req.getSession().getId());
                 break;
             case Expired:
                 return new ResponseEntity<>("token has expired", responseHeaders, HttpStatus.UPGRADE_REQUIRED);
@@ -193,43 +236,25 @@ public class AuthMgt {
     // Password Functions:
     // #########################
 
-    public String tryChangePsw(HttpServletRequest request, Login login, String oldPassword, String newPassword) {
-        String token = createToken(login, oldPassword);
-        if (token == null) {
-            return null;
-        }
-        String salt = getSalt();
-        login.setSalt(salt);
-        String encryptedPassword = generateSecurePassword(newPassword, salt);
-        login.setPsw(encryptedPassword);
-        saveLogin(request, login);
-        return token;
-    }
 
-    public String tryRefreshToken(HttpServletRequest request, Login login, String password) {
-        String token = createToken(login, password);
-        if (token == null) {
-            return null;
-        }
-        saveLogin(request, login);
-        return token;
-    }
-
-
-    private String createToken(Login login, String password) {
-        if (verifyUserPassword(password, login.getPsw(), login.getSalt())) {
+    // create token for verified users only
+    private String tryCreateToken(Login login, String password) {
+        if (verifyUserPassword(password, login.getEncriptedPassword(), login.getSalt())) {
+            removeOldActiveToken(login);
             Date expire = new DateTime(new Date()).plusDays(EXPIRATION).toDate();
             login.setExpire(expire);
-            return Jwts.builder().setSubject(login.getLogin())
+            String newToken = Jwts.builder().setSubject(login.getLogin())
                     .setExpiration(expire)
                     .signWith(SignatureAlgorithm.HS512, SECRET).compact();
+            saveActiveToken(newToken);
+            return newToken;
         }
         return null;
     }
 
-    private boolean verifyUserPassword(String providedPassword, String securedPassword, String salt) {
-        String newSecurePassword = generateSecurePassword(providedPassword, salt);
-        return newSecurePassword.equalsIgnoreCase(securedPassword);
+    private boolean verifyUserPassword(String userPassword, String encryptedPasswordFromRepo, String salt) {
+        String userEncryptedPassword = generateSecurePassword(userPassword, salt);
+        return userEncryptedPassword.equalsIgnoreCase(encryptedPasswordFromRepo);
     }
 
     private String getSalt() {
@@ -276,10 +301,31 @@ public class AuthMgt {
     }
 
 
+    private void saveActiveToken(String token) {
+        activeTokens.add(token);
+        //TODO redis pub
+    }
+
+    private void removeOldActiveToken(Login login) {
+        //TODO redis pub
+        String oldToken = Jwts.builder().setSubject(login.getLogin())
+                .setExpiration(login.getExpire())
+                .signWith(SignatureAlgorithm.HS512, SECRET).compact();
+        activeTokens.remove(oldToken);
+    }
+
     private void saveLogin(HttpServletRequest request, Login login) {
-        AuthSessionListener.setAuthenticated(request.getSession().getId());
+        //TODO redis pub
         pubLoginToRepository(login);
         loginMap.put(login.getLogin(), login);
     }
 
+
+    private void subAddActiveToken(){
+        //TODO
+    }
+
+    private void subRemoveActiveToken(){
+        //TODO
+    }
 }

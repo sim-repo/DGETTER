@@ -8,7 +8,6 @@ import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import hello.model.getter.IGetter;
 
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -21,19 +20,17 @@ public class Login implements Serializable {
 
     private String login;
     private Date expire;
-    private String psw;
+    private String encriptedPassword;
     private String salt;
-    String sessionId;
-    private Date lastAuthenticationDate;
-
+    private String token;
     ArrayList<Role> roles;
 
     public Login() {}
 
-    public Login(String login, String psw, String salt, Date expire) {
+    public Login(String login, String encriptedPassword, String salt, Date expire) {
         super();
         this.login = login;
-        this.psw = psw;
+        this.encriptedPassword = encriptedPassword;
         this.salt = salt;
         this.expire = expire;
     }
@@ -53,11 +50,11 @@ public class Login implements Serializable {
     public void setLogin(String login) {
         this.login = login;
     }
-    public String getPsw() {
-        return psw;
+    public String getEncriptedPassword() {
+        return encriptedPassword;
     }
-    public void setPsw(String psw) {
-        this.psw = psw;
+    public void setEncriptedPassword(String encriptedPassword) {
+        this.encriptedPassword = encriptedPassword;
     }
     public Date getExpire() {
         return expire;
@@ -82,17 +79,13 @@ public class Login implements Serializable {
             roles.add(role);
         }
     }
-    public Date getLastAuthenticationDate() {
-        return lastAuthenticationDate;
+
+    public String getToken() {
+        return token;
     }
-    public void setLastAuthenticationDate(Date lastAuthenticationDate) {
-        this.lastAuthenticationDate = lastAuthenticationDate;
-    }
-    public String getSessionId() {
-        return sessionId;
-    }
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
+
+    public void setToken(String token) {
+        this.token = token;
     }
 
     @Override
@@ -101,7 +94,7 @@ public class Login implements Serializable {
                 "id=" + id +
                 ", login='" + login + '\'' +
                 ", expire=" + expire +
-                ", psw='" + psw + '\'' +
+                ", psw='" + encriptedPassword + '\'' +
                 ", salt='" + salt + '\'' +
                 '}';
     }
