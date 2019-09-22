@@ -5,7 +5,6 @@ import hello.dao.Dao;
 import hello.model.connectors.JdbConnector;
 import hello.model.getter.DbGetter;
 import hello.model.getter.IGetter;
-import hello.model.getter.SecureDbGetter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -41,21 +40,6 @@ public class GetterService {
 
     public String exec(String endpointId, String method,  String params) throws Exception {
         DbGetter getter = appConfig.getDbGetter(endpointId, method);
-        Map<String, String> parsedParams = getQueryParameters(params);
-        String sql = getSQLStatement(getter, parsedParams);
-        if (sql==null) return null;
-        return exec(getter, sql, getter.getEndpointId());
-    }
-
-    public String execWithSecure(String endpointId, String method,  Map<String, String> params) throws Exception {
-        SecureDbGetter getter = appConfig.getSecureDbGetter(endpointId, method);
-        String sql = getSQLStatement(getter, params);
-        if (sql==null) return null;
-        return exec(getter, sql, getter.getEndpointId());
-    }
-
-    public String execWithSecure(String endpointId, String method,  String params) throws Exception {
-        SecureDbGetter getter = appConfig.getSecureDbGetter(endpointId, method);
         Map<String, String> parsedParams = getQueryParameters(params);
         String sql = getSQLStatement(getter, parsedParams);
         if (sql==null) return null;

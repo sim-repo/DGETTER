@@ -1,8 +1,10 @@
 package hello.controller;
 
 import hello.helper.ObjectConverter;
+import hello.security.AuthMgt;
 import hello.service.GetterService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -21,20 +23,24 @@ import java.util.Map;
 public class ReadController {
 
     @Autowired
+    private
+    AuthMgt authMgt;
+
+    @Autowired
     private GetterService getterService;
 
-    public static ResponseEntity<String> getBadResponse(String absentParam){
+    private static ResponseEntity<String> getBadResponse(String absentParam){
         return new ResponseEntity<String>("Required parameter is not specified: "+absentParam, HttpStatus.BAD_REQUEST);
     }
 
     private String validate(HttpServletRequest request) {
         String param = request.getParameter("method");
-        if (param == null || param == "") {
+        if (param == null || param.equals("")) {
             return "method";
         }
 
         param = request.getParameter("endpointId");
-        if (param == null || param == "") {
+        if (param == null || param.equals("")) {
             return "endpointId";
         }
         return null;
@@ -42,26 +48,44 @@ public class ReadController {
 
     //TODO add authorization by token
     @RequestMapping(value = "/db", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
-    public @ResponseBody String jsonDBUniGet(HttpServletRequest request){
-        String res = "";
+    public ResponseEntity<String> jsonDBUniGet(HttpServletRequest request){
+    
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
+        // check authentication
+        ResponseEntity<String> invalid = authMgt.checkAuthentication(request);
         try {
+            // if not authenticated
+            if (invalid != null) {
+                return invalid;
+            }
             String absent = validate(request);
+            // if bad parameters
             if (absent != null) {
-                return getBadResponse(absent).getBody();
+                String body = getBadResponse(absent).getBody();
+                return new ResponseEntity<>(body, responseHeaders, HttpStatus.OK);
             }
             String endpoint = request.getParameter("endpointId");
             String method = request.getParameter("method");
-            res = getterService.exec(endpoint, method, request.getQueryString());
+
+            invalid = authMgt.checkAuthorization(request);
+            // if not authorized
+            if (invalid != null) {
+                return invalid;
+            }
+
+
+            String body = getterService.exec(endpoint, method, request.getQueryString());
+            return new ResponseEntity<>(body, responseHeaders, HttpStatus.OK);
         } catch (Exception ex) {
-            res = ex.getMessage();
+            return new ResponseEntity<>(ex.getMessage(), responseHeaders, HttpStatus.OK);
         }
-        return res;
     }
 
     //TODO add authorization by token
     @RequestMapping(value = "/db64", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
     public @ResponseBody String jsonDBUni64Get(HttpServletRequest request){
-        String res = "";
+        String res;
         try {
             Enumeration enumeration = request.getParameterNames();
             Map<String, String> modelMap = new HashMap<>();
@@ -87,57 +111,6 @@ public class ReadController {
         } catch (Exception ex) {
             res = ex.getMessage();
         }
-        return res;
-    }
-
-
-    //TODO add authorization by token
-    @RequestMapping(value = "/db/secure", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
-    public @ResponseBody String jsonSecureUniGet(HttpServletRequest request){
-        String res = "";
-        try {
-            String absent = validate(request);
-            if (absent != null) {
-                return getBadResponse(absent).getBody();
-            }
-            String endpoint = request.getParameter("endpointId");
-            String method = request.getParameter("method");
-            res = getterService.execWithSecure(endpoint, method, request.getQueryString());
-        } catch (Exception ex) {
-            res = ex.getMessage();
-        }
-        return res;
-    }
-
-    //TODO add authorization by token
-    @RequestMapping(value = "/db64/secure", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
-    public @ResponseBody String jsonSecureUni64Get(HttpServletRequest request){
-            String res = "";
-            try {
-                Enumeration enumeration = request.getParameterNames();
-                Map<String, String> modelMap = new HashMap<>();
-                while (enumeration.hasMoreElements()) {
-                    String parameterName = (String) enumeration.nextElement();
-                    String val = request.getParameter(parameterName);
-                    if (ObjectConverter.isNumeric(val) == false) {
-                        if (Base64.isBase64(val)) {
-                            byte[] converted = Base64.decodeBase64(val.getBytes());
-                            val = new String(converted, StandardCharsets.UTF_8);
-                        }
-                    }
-                    modelMap.put(parameterName, val);
-                }
-
-                String absent = validate(request);
-                if (absent != null) {
-                    return getBadResponse(absent).getBody();
-                }
-                String endpoint = request.getParameter("endpointId");
-                String method = request.getParameter("method");
-                res = getterService.execWithSecure(endpoint, method, modelMap);
-            } catch (Exception ex) {
-                res = ex.getMessage();
-            }
         return res;
     }
 

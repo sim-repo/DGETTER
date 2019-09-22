@@ -3,7 +3,6 @@ package hello.config;
 import hello.factory.JdbcTemplateFactory;
 import hello.model.connectors.JdbConnector;
 import hello.model.getter.DbGetter;
-import hello.model.getter.SecureDbGetter;
 import hello.security.model.Login;
 import org.redisson.Redisson;
 import org.redisson.api.RTopic;
@@ -25,7 +24,6 @@ public class AppConfig {
 
     ConcurrentHashMap<String,JdbcTemplate> jdbcTemplateMap = new ConcurrentHashMap<String, JdbcTemplate>();
     ConcurrentHashMap<String,DbGetter> getterMap = new ConcurrentHashMap<String, DbGetter>();
-    ConcurrentHashMap<String,SecureDbGetter> secGetterMap = new ConcurrentHashMap<String, SecureDbGetter>();
     ConcurrentHashMap<String,JdbConnector> connectorMap = new ConcurrentHashMap<String, JdbConnector>();
 
     RedissonClient redClient = null;
@@ -34,14 +32,13 @@ public class AppConfig {
         super();
         subJdbConnector();
         subGetter();
-        subSecGetter();
     }
 
     private RedissonClient getRedClient() {
         if (redClient == null) {
             Config config = new Config();
             config.useSingleServer()
-                    .setAddress("redis://192.168.1.70:6379");
+                    .setAddress("redis://localhost:6379");
             redClient = Redisson.create(config);
         }
         return redClient;
@@ -57,10 +54,6 @@ public class AppConfig {
 
     public DbGetter getDbGetter(String endpoint, String method){
         return getterMap.get(endpoint+method);
-    }
-
-    public SecureDbGetter getSecureDbGetter(String endpoint, String method){
-        return secGetterMap.get(endpoint+method);
     }
 
 
@@ -105,18 +98,4 @@ public class AppConfig {
         });
     }
 
-    private void subSecGetter(){
-        System.out.println("sub #3: SecureDbGetter is ready");
-        RTopic topic = getRedClient().getTopic("secure.getter");
-
-        topic.addListener(SecureDbGetter.class, new MessageListener<SecureDbGetter>() {
-            @Override
-            public void onMessage(CharSequence charSequence, SecureDbGetter getter) {
-                System.out.println("TAKE sec getter");
-                System.out.println(getter);
-                secGetterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
-                System.out.println("Total: "+secGetterMap.size());
-            }
-        });
-    }
 }

@@ -1,8 +1,6 @@
 package hello.controller;
 
 import hello.security.AuthMgt;
-import hello.security.AuthSessionListener;
-import hello.security.enums.JwtStatusEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.io.IOException;
+
 
 @RestController
 @RequestMapping(path = "/foo")
@@ -45,34 +43,11 @@ public class EmployeeController {
     public ResponseEntity<String> testSessionListner(HttpServletRequest request, HttpServletResponse response){
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
-        ResponseEntity<String> res = checkAuth(request);
+        ResponseEntity<String> res = authMgt.checkAuthentication(request);
         if (res != null) {
             return res;
         }
         System.out.println("PROCESSING.....");
         return new ResponseEntity<String>("ok", responseHeaders, HttpStatus.OK);
-    }
-
-
-    private ResponseEntity<String> checkAuth(HttpServletRequest request) {
-        ResponseEntity<String> res = null;
-        HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
-        JwtStatusEnum status = JwtStatusEnum.UnAuhorized;
-        try {
-            if (AuthSessionListener.isAuthenticated(request.getSession().getId()) == false) {
-                try {
-                    status = authMgt.doAuthentication(request);
-                }catch (Exception e) {
-                    status =  JwtStatusEnum.UnAuhorized;
-                }
-                res = authMgt.forward(request,status);
-                if (res != null) {
-                    return res;
-                }
-            }
-        }catch (IOException e) {
-        }
-        return null;
     }
 }

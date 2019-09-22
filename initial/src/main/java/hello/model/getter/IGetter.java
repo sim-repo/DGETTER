@@ -10,4 +10,5 @@ public interface IGetter extends Serializable {
     String getFuncParamByWebParam(String webParam);
     String getExecutedFunctionName();
     FormatEnum getResultType();
+    Boolean getAllAccess();
 }

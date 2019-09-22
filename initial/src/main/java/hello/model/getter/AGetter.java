@@ -15,7 +15,7 @@ public abstract class AGetter implements IGetter{
     private String hibernateParamsMap;
     private String resultType;
     private String description;
-
+    private Boolean isAllAccess = false;
 
     @Override
     public String getClazz() {
@@ -24,6 +24,10 @@ public abstract class AGetter implements IGetter{
 
     public void setClazz(String clazz) {
         this.clazz = clazz;
+    }
+
+    public Boolean getAllAccess() {
+        return isAllAccess;
     }
 
     public String getEndpointId() {

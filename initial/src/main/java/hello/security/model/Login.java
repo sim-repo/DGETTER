@@ -2,11 +2,13 @@ package hello.security.model;
 
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import hello.model.getter.IGetter;
 
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -15,12 +17,16 @@ public class Login implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty("id")
-    protected Integer id;
+    private Integer id;
 
-    String login;
-    Date expire;
-    String psw;
-    String salt;
+    private String login;
+    private Date expire;
+    private String psw;
+    private String salt;
+    String sessionId;
+    private Date lastAuthenticationDate;
+
+    ArrayList<Role> roles;
 
     public Login() {}
 
@@ -65,7 +71,29 @@ public class Login implements Serializable {
     public void setSalt(String salt) {
         this.salt = salt;
     }
-
+    public ArrayList<Role> getRoles() {
+        return roles;
+    }
+    public void setRoles(ArrayList<Role> roles) {
+        this.roles = roles;
+    }
+    public void setRole(Role role){
+        if (!roles.contains(role)) {
+            roles.add(role);
+        }
+    }
+    public Date getLastAuthenticationDate() {
+        return lastAuthenticationDate;
+    }
+    public void setLastAuthenticationDate(Date lastAuthenticationDate) {
+        this.lastAuthenticationDate = lastAuthenticationDate;
+    }
+    public String getSessionId() {
+        return sessionId;
+    }
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
 
     @Override
     public String toString() {
