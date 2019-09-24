@@ -16,6 +16,7 @@ import hello.model.getter.IGetter;
 import hello.security.enums.AuthenticationModeEnum;
 import hello.security.enums.JwtStatusEnum;
 import hello.security.model.Login;
+import hello.security.model.ProtoLogin;
 import hello.security.pubsub.PubSub;
 import io.jsonwebtoken.*;
 import org.joda.time.DateTime;
@@ -42,7 +43,6 @@ public class AuthMgt {
     private static final int ITERATIONS = 10000;
     private static final int KEY_LENGTH = 256;
 
-    private static final Integer EXPIRATION = 2; // in days
 
     private static final String SECRET = "ThisIsASecret";
 
@@ -51,57 +51,84 @@ public class AuthMgt {
     private static final String HEADER_STRING = "Authorization";
 
 
-    private static AuthenticationModeEnum AUTH_MODE = AuthenticationModeEnum.BASIC;
+    // Changed Dynamically States
+    public static Integer EXPIRE = 2; // in days
 
-    // Authorization Mode
-    private static Boolean enabledAuthorization = false;
+    public static AuthenticationModeEnum AUTH_MODE = AuthenticationModeEnum.BASIC;
+
+    public static Boolean enabledAuthorization = false;
 
 
 
     // #########################
     // lifecycle step #1: new user registration -
-    // create new login with temporary password and generate temporary token:
-    // result: new login, new temporary encrypted password, new salt
+    // admin creates new login with temporary password
+    // result:
+    // --new login
+    // --new temporary encrypted password
+    // --new temporary salt
+    // --new temporary expire
     // #########################
-    public Boolean addNewLogin(HttpServletRequest request, String username, String psw, int expireInDays) {
+
+    // classic web-service version
+    public static Boolean addNewLogin(String username, String psw, int expireInDays) {
         String salt = getSalt();
         String encryptedPsw = generateSecurePassword(psw, salt);
-        int expireDays = expireInDays == 0 ? EXPIRATION : expireInDays;
+        int expireDays = expireInDays == 0 ? EXPIRE : expireInDays;
         Date expire = new DateTime(new Date()).plusDays(expireDays).toDate();
         Login login = new Login(username, encryptedPsw, salt, expire);
-        saveLogin(login);
+        //syncLogin(login);
         return true;
     }
 
+    // docker-container version
+    public static Login addNewLogin(ProtoLogin protoLogin) {
+        String salt = getSalt();
+        String encryptedPsw = generateSecurePassword(protoLogin.getPassword(), salt);
+        int expireDays = protoLogin.getExpireInDays() == 0 ? EXPIRE : protoLogin.getExpireInDays();
+        Date expire = new DateTime(new Date()).plusDays(expireDays).toDate();
+        Login login = new Login(protoLogin.getName(), encryptedPsw, salt, expire);
+        return login;
+    }
+
     // #########################
-    // lifecycle step #2: user puts real password  -
-    // and gets first token
-    // result: new active token, new encrypted password, new salt, new expire
+    // lifecycle step #2: user puts real password and gets first token
+    // result:
+    // --new active token
+    // --remove old token
+    // --new encrypted password
+    // --new salt
+    // --new expire
     // #########################
-    public String tryChangePsw(HttpServletRequest request, Login login, String oldPassword, String newPassword) {
+    public String tryChangePsw(Login login, String oldPassword, String newPassword) {
         String token = tryCreateToken(login, oldPassword);
         if (token == null) {
+            // TODO throw err
             return null;
         }
         String salt = getSalt();
         login.setSalt(salt);
         String encryptedPassword = generateSecurePassword(newPassword, salt);
         login.setEncryptedPassword(encryptedPassword);
-        saveLogin(login);
+        syncLogin(login);
         return token;
     }
 
     // #########################
     // lifecycle step #3: token has expired  -
     // user puts password for getting new token
-    // result: new active token, remove old token, new expire
+    // result:
+    // --new active token
+    // --remove old token
+    // --new expire
     // #########################
-    public String tryRefreshToken(HttpServletRequest request, Login login, String password) {
+    public String tryRecreateToken(Login login, String password) {
         String token = tryCreateToken(login, password);
         if (token == null) {
+            // TODO throw err
             return null;
         }
-        saveLogin(login);
+        syncLogin(login);
         return token;
     }
 
@@ -220,7 +247,7 @@ public class AuthMgt {
     // Login Functions:
     // #########################
     public Login getLogin(String username){
-        return pubSub.getLogin(username);
+        return pubSub.getLoginByUsername(username);
     }
 
 
@@ -230,17 +257,15 @@ public class AuthMgt {
     // #########################
 
 
-    // create token for verified users only
-    // create token for verified users only
+    // creates token for verified users only
     private String tryCreateToken(Login login, String password) {
         if (verifyUserPassword(password, login.getEncryptedPassword(), login.getSalt())) {
-            removeOldActiveToken(login);
-            Date expire = new DateTime(new Date()).plusDays(EXPIRATION).toDate();
+            Date expire = new DateTime(new Date()).plusDays(EXPIRE).toDate();
             login.setExpire(expire);
-            String newToken = Jwts.builder().setSubject(login.getLogin())
+            String newToken = Jwts.builder().setSubject(login.getName())
                     .setExpiration(expire)
                     .signWith(SignatureAlgorithm.HS512, SECRET).compact();
-            addActiveToken(newToken);
+            login.setOldToken(login.getToken());
             login.setToken(newToken);
             return newToken;
         }
@@ -252,7 +277,7 @@ public class AuthMgt {
         return userEncryptedPassword.equalsIgnoreCase(encryptedPasswordFromRepo);
     }
 
-    private String getSalt() {
+    private static String getSalt() {
         StringBuilder returnValue = new StringBuilder(30);
         for (int i = 0; i < 30; i++) {
             returnValue.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
@@ -260,7 +285,7 @@ public class AuthMgt {
         return new String(returnValue);
     }
 
-    private byte[] hash(char[] password, byte[] salt) {
+    private static byte[] hash(char[] password, byte[] salt) {
         PBEKeySpec spec = new PBEKeySpec(password, salt, ITERATIONS, KEY_LENGTH);
         Arrays.fill(password, Character.MIN_VALUE);
         try {
@@ -273,7 +298,7 @@ public class AuthMgt {
         }
     }
 
-    private String generateSecurePassword(String password, String salt) {
+    private static String generateSecurePassword(String password, String salt) {
         byte[] securePassword = hash(password.toCharArray(), salt.getBytes());
         return Base64.getEncoder().encodeToString(securePassword);
     }
@@ -296,21 +321,9 @@ public class AuthMgt {
     }
 
 
-    private void addActiveToken(String token) {
-        pubSub.getActiveTokens().add(token);
-        pubSub.pub_AddActiveToken(token);
+    private void syncLogin(Login login) {
+        pubSub.pub_syncLogin(login);
     }
 
-    private void removeOldActiveToken(Login login) {
-        String oldToken = Jwts.builder().setSubject(login.getLogin())
-                .setExpiration(login.getExpire())
-                .signWith(SignatureAlgorithm.HS512, SECRET).compact();
-        pubSub.remove_OldActiveToken(oldToken);
-        pubSub.getActiveTokens().remove(oldToken);
-    }
-
-    private void saveLogin(Login login) {
-        pubSub.pub_AddLogin(login);
-    }
 
 }

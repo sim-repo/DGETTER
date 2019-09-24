@@ -24,6 +24,7 @@ public class AppConfig {
 
     ConcurrentHashMap<String,JdbcTemplate> jdbcTemplateMap = new ConcurrentHashMap<String, JdbcTemplate>();
     ConcurrentHashMap<String,DbGetter> getterMap = new ConcurrentHashMap<String, DbGetter>();
+    ConcurrentHashMap<Integer,DbGetter> getterById = new ConcurrentHashMap<Integer, DbGetter>();
     ConcurrentHashMap<String,JdbConnector> connectorMap = new ConcurrentHashMap<String, JdbConnector>();
 
     RedissonClient redClient = null;
@@ -56,11 +57,8 @@ public class AppConfig {
         return getterMap.get(endpoint+method);
     }
 
-
-    // PUB:
-    public void pubLogins(Login login){
-        RTopic topic = getRedClient().getTopic("logins");
-        long clientsReceivedMessage = topic.publish(login);
+    public DbGetter getDbGetterById(Integer getterId){
+        return getterById.get(getterId);
     }
 
 
@@ -93,6 +91,7 @@ public class AppConfig {
                 System.out.println("TAKE getter");
                 System.out.println(getter);
                 getterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
+                getterById.put(getter.getId(), getter);
                 System.out.println("Total: "+getterMap.size());
             }
         });

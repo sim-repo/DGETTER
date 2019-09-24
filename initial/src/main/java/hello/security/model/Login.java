@@ -17,18 +17,19 @@ public class Login implements Serializable {
     @JsonProperty("id")
     private Integer id;
 
-    private String login;
+    private String name;
     private Date expire;
     private String encryptedPassword;
     private String salt;
     private String token;
+    private String oldToken;
     private HashSet<String> roles;
 
     public Login() {}
 
-    public Login(String login, String encryptedPassword, String salt, Date expire) {
+    public Login(String name, String encryptedPassword, String salt, Date expire) {
         super();
-        this.login = login;
+        this.name = name;
         this.encryptedPassword = encryptedPassword;
         this.salt = salt;
         this.expire = expire;
@@ -43,11 +44,11 @@ public class Login implements Serializable {
     public void setId(Integer id) {
         this.id = id;
     }
-    public String getLogin() {
-        return login;
+    public String getName() {
+        return name;
     }
-    public void setLogin(String login) {
-        this.login = login;
+    public void setName(String name) {
+        this.name = name;
     }
     public String getEncryptedPassword() {
         return encryptedPassword;
@@ -85,11 +86,19 @@ public class Login implements Serializable {
         this.token = token;
     }
 
+    public String getOldToken() {
+        return oldToken;
+    }
+
+    public void setOldToken(String oldToken) {
+        this.oldToken = oldToken;
+    }
+
     @Override
     public String toString() {
         return "Login{" +
                 "id=" + id +
-                ", login='" + login + '\'' +
+                ", login='" + name + '\'' +
                 ", expire=" + expire +
                 ", psw='" + encryptedPassword + '\'' +
                 ", salt='" + salt + '\'' +

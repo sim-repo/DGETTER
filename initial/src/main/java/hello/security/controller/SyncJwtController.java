@@ -40,7 +40,7 @@ public class SyncJwtController {
         if (login != null) {
             return new ResponseEntity<>("user error: username has already registered", responseHeaders, HttpStatus.CONFLICT);
         }
-        Boolean done = authMgt.addNewLogin(request, username, password, expireInDays);
+        Boolean done = authMgt.addNewLogin(username, password, expireInDays);
         if (!done) {
             return new ResponseEntity<>("error has occurred: can't generate new token", responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -93,7 +93,7 @@ public class SyncJwtController {
         if (login == null) {
             return new ResponseEntity<>("wrong login", responseHeaders, HttpStatus.UNAUTHORIZED);
         }
-        String token = authMgt.tryChangePsw(request, login, oldPassword, newPassword);
+        String token = authMgt.tryChangePsw(login, oldPassword, newPassword);
         if (token == null || token.equals("")) {
             return new ResponseEntity<>("wrong login or old password", responseHeaders, HttpStatus.UNAUTHORIZED);
         }
@@ -119,7 +119,7 @@ public class SyncJwtController {
         if (login == null) {
             return new ResponseEntity<>("wrong login", responseHeaders, HttpStatus.UNAUTHORIZED);
         }
-        String token = authMgt.tryRefreshToken(request, login, password);
+        String token = authMgt.tryRecreateToken(login, password);
         if (token == null || token.equals("")) {
             return new ResponseEntity<>("wrong login or old password", responseHeaders, HttpStatus.UNAUTHORIZED);
         }

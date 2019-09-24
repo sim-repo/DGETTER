@@ -25,6 +25,6 @@ public enum AuthenticationModeEnum {
     }
 
     public static AuthenticationModeEnum getDefault() {
-        return BASIC;
+        return NONE;
     }
 }
