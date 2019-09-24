@@ -1,9 +1,8 @@
 package hello.security.model;
 
-
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -20,17 +19,17 @@ public class Login implements Serializable {
 
     private String login;
     private Date expire;
-    private String encriptedPassword;
+    private String encryptedPassword;
     private String salt;
     private String token;
-    ArrayList<Role> roles;
+    private HashSet<String> roles;
 
     public Login() {}
 
-    public Login(String login, String encriptedPassword, String salt, Date expire) {
+    public Login(String login, String encryptedPassword, String salt, Date expire) {
         super();
         this.login = login;
-        this.encriptedPassword = encriptedPassword;
+        this.encryptedPassword = encryptedPassword;
         this.salt = salt;
         this.expire = expire;
     }
@@ -50,11 +49,11 @@ public class Login implements Serializable {
     public void setLogin(String login) {
         this.login = login;
     }
-    public String getEncriptedPassword() {
-        return encriptedPassword;
+    public String getEncryptedPassword() {
+        return encryptedPassword;
     }
-    public void setEncriptedPassword(String encriptedPassword) {
-        this.encriptedPassword = encriptedPassword;
+    public void setEncryptedPassword(String encryptedPassword) {
+        this.encryptedPassword = this.encryptedPassword;
     }
     public Date getExpire() {
         return expire;
@@ -68,16 +67,14 @@ public class Login implements Serializable {
     public void setSalt(String salt) {
         this.salt = salt;
     }
-    public ArrayList<Role> getRoles() {
+    public HashSet<String> getRoles() {
         return roles;
     }
-    public void setRoles(ArrayList<Role> roles) {
+    public void setRoles(HashSet<String> roles) {
         this.roles = roles;
     }
-    public void setRole(Role role){
-        if (!roles.contains(role)) {
-            roles.add(role);
-        }
+    public void setRole(String role){
+        roles.add(role);
     }
 
     public String getToken() {
@@ -94,7 +91,7 @@ public class Login implements Serializable {
                 "id=" + id +
                 ", login='" + login + '\'' +
                 ", expire=" + expire +
-                ", psw='" + encriptedPassword + '\'' +
+                ", psw='" + encryptedPassword + '\'' +
                 ", salt='" + salt + '\'' +
                 '}';
     }

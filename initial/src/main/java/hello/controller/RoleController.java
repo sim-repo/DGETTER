@@ -20,10 +20,10 @@ public class RoleController {
         try {
             System.out.println(url);
             //TODO: redis config
-            return new ResponseEntity<String>("", headers, HttpStatus.OK);
+            return new ResponseEntity<>("", headers, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity<String>(e.getCause().toString(), headers, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(e.getCause().toString(), headers, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -33,24 +33,23 @@ public class RoleController {
         HttpHeaders headers = new HttpHeaders();
         try {
             System.out.println(url);
-
-            return new ResponseEntity<String>("", headers, HttpStatus.OK);
+            return new ResponseEntity<>("", headers, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity<String>(e.getCause().toString(), headers, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(e.getCause().toString(), headers, HttpStatus.BAD_REQUEST);
         }
     }
+
 
     @RequestMapping(value = "/admin/roles/remove", method = RequestMethod.POST, consumes = MediaType.TEXT_PLAIN_VALUE, produces = "text/plain;charset=Windows-1251")
     public ResponseEntity<String> removeRoles(HttpServletRequest request, @RequestBody String url) {
         HttpHeaders headers = new HttpHeaders();
         try {
             System.out.println(url);
-
-            return new ResponseEntity<String>("", headers, HttpStatus.OK);
+            return new ResponseEntity<>("", headers, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
-            return new ResponseEntity<String>(e.getCause().toString(), headers, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(e.getCause().toString(), headers, HttpStatus.BAD_REQUEST);
         }
     }
 

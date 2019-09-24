@@ -5,6 +5,7 @@ import hello.enums.ConnectorEnum;
 import java.io.Serializable;
 
 public class JdbConnector implements Serializable {
+    private Integer id;
     private String code = "";
     private String driverClassName = "";
     private String dbURL= "";
@@ -13,6 +14,15 @@ public class JdbConnector implements Serializable {
     private String login = "";
     private String psw = "";
     private String endpointId = "";
+
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public void setCode(ConnectorEnum code) {
         this.code = code.toValue();

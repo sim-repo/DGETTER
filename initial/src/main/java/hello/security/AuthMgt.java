@@ -5,16 +5,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
 
+import com.google.common.collect.Sets;
 import hello.config.AppConfig;
+import hello.model.getter.IGetter;
 import hello.security.enums.AuthenticationModeEnum;
 import hello.security.enums.JwtStatusEnum;
 import hello.security.model.Login;
+import hello.security.pubsub.PubSub;
 import io.jsonwebtoken.*;
 import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +32,10 @@ import org.springframework.stereotype.Component;
 public class AuthMgt {
 
     @Autowired
-    private
     AppConfig appConfig;
 
-    private ConcurrentHashMap<String, Login> loginMap = new ConcurrentHashMap<>();
-    private HashSet<String> activeTokens = new HashSet<>();
+    @Autowired
+    PubSub pubSub;
 
     private static final Random RANDOM = new SecureRandom();
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -68,8 +69,7 @@ public class AuthMgt {
         int expireDays = expireInDays == 0 ? EXPIRATION : expireInDays;
         Date expire = new DateTime(new Date()).plusDays(expireDays).toDate();
         Login login = new Login(username, encryptedPsw, salt, expire);
-        saveLogin(request, login);
-        this.loginMap.put(login.getLogin(), login);
+        saveLogin(login);
         return true;
     }
 
@@ -86,8 +86,8 @@ public class AuthMgt {
         String salt = getSalt();
         login.setSalt(salt);
         String encryptedPassword = generateSecurePassword(newPassword, salt);
-        login.setEncriptedPassword(encryptedPassword);
-        saveLogin(request, login);
+        login.setEncryptedPassword(encryptedPassword);
+        saveLogin(login);
         return token;
     }
 
@@ -101,7 +101,7 @@ public class AuthMgt {
         if (token == null) {
             return null;
         }
-        saveLogin(request, login);
+        saveLogin(login);
         return token;
     }
 
@@ -162,7 +162,7 @@ public class AuthMgt {
     private Boolean isAuthenticated(HttpServletRequest request) {
         String token = request.getHeader(HEADER_STRING);
         if (token != null) {
-            return activeTokens.contains(token);
+            return pubSub.getActiveTokens().contains(token);
         }
         return false;
     }
@@ -201,35 +201,28 @@ public class AuthMgt {
     }
 
 
-
-
     // #########################
     // Authorization Functions:
     // #########################
-    public ResponseEntity<String> checkAuthorization(HttpServletRequest request) {
+    public Boolean checkAuthorization(HttpServletRequest request) {
         if (!enabledAuthorization || AuthenticationModeEnum.NONE.equals(AUTH_MODE)) return null;
         String endpoint = request.getParameter("endpointId");
         String method = request.getParameter("method");
-
-        //TODO
-        return null;
+        String token = request.getHeader(HEADER_STRING);
+        Login login = pubSub.getLoginByToken(token);
+        IGetter getter = appConfig.getDbGetter(endpoint, method);
+        Set<String> intersection = Sets.intersection(login.getRoles(), getter.getRoles());
+        return intersection.size() > 0;
     }
-
-
 
 
     // #########################
     // Login Functions:
     // #########################
-
     public Login getLogin(String username){
-        return this.loginMap.get(username);
+        return pubSub.getLogin(username);
     }
 
-
-    private void pubLoginToRepository(Login login) {
-        appConfig.pubLogins(login);
-    }
 
 
     // #########################
@@ -238,15 +231,17 @@ public class AuthMgt {
 
 
     // create token for verified users only
+    // create token for verified users only
     private String tryCreateToken(Login login, String password) {
-        if (verifyUserPassword(password, login.getEncriptedPassword(), login.getSalt())) {
+        if (verifyUserPassword(password, login.getEncryptedPassword(), login.getSalt())) {
             removeOldActiveToken(login);
             Date expire = new DateTime(new Date()).plusDays(EXPIRATION).toDate();
             login.setExpire(expire);
             String newToken = Jwts.builder().setSubject(login.getLogin())
                     .setExpiration(expire)
                     .signWith(SignatureAlgorithm.HS512, SECRET).compact();
-            saveActiveToken(newToken);
+            addActiveToken(newToken);
+            login.setToken(newToken);
             return newToken;
         }
         return null;
@@ -301,31 +296,21 @@ public class AuthMgt {
     }
 
 
-    private void saveActiveToken(String token) {
-        activeTokens.add(token);
-        //TODO redis pub
+    private void addActiveToken(String token) {
+        pubSub.getActiveTokens().add(token);
+        pubSub.pub_AddActiveToken(token);
     }
 
     private void removeOldActiveToken(Login login) {
-        //TODO redis pub
         String oldToken = Jwts.builder().setSubject(login.getLogin())
                 .setExpiration(login.getExpire())
                 .signWith(SignatureAlgorithm.HS512, SECRET).compact();
-        activeTokens.remove(oldToken);
+        pubSub.remove_OldActiveToken(oldToken);
+        pubSub.getActiveTokens().remove(oldToken);
     }
 
-    private void saveLogin(HttpServletRequest request, Login login) {
-        //TODO redis pub
-        pubLoginToRepository(login);
-        loginMap.put(login.getLogin(), login);
+    private void saveLogin(Login login) {
+        pubSub.pub_AddLogin(login);
     }
 
-
-    private void subAddActiveToken(){
-        //TODO
-    }
-
-    private void subRemoveActiveToken(){
-        //TODO
-    }
 }

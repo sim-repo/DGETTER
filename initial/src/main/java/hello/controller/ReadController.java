@@ -63,17 +63,14 @@ public class ReadController {
             // if bad parameters
             if (absent != null) {
                 String body = getBadResponse(absent).getBody();
-                return new ResponseEntity<>(body, responseHeaders, HttpStatus.OK);
+                return new ResponseEntity<>(body, responseHeaders, HttpStatus.BAD_REQUEST);
             }
             String endpoint = request.getParameter("endpointId");
             String method = request.getParameter("method");
 
-            invalid = authMgt.checkAuthorization(request);
-            // if not authorized
-            if (invalid != null) {
-                return invalid;
+            if (!authMgt.checkAuthorization(request)) {
+                return new ResponseEntity<>("No permissions", responseHeaders, HttpStatus.FORBIDDEN);
             }
-
 
             String body = getterService.exec(endpoint, method, request.getQueryString());
             return new ResponseEntity<>(body, responseHeaders, HttpStatus.OK);

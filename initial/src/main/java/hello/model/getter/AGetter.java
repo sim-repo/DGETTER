@@ -2,11 +2,15 @@ package hello.model.getter;
 
 import hello.enums.FormatEnum;
 import hello.helper.StatementParser;
+
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 public abstract class AGetter implements IGetter{
-    protected String clazz;
+
+    private Integer id;
+    private String clazz;
     private String method;
     private String endpointId;
     private Map<String, List<String>> webParamsByMethod;
@@ -16,6 +20,15 @@ public abstract class AGetter implements IGetter{
     private String resultType;
     private String description;
     private Boolean isAllAccess = false;
+    private HashSet<String> roles;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     @Override
     public String getClazz() {
@@ -109,6 +122,19 @@ public abstract class AGetter implements IGetter{
         this.hibernateParamsMap = hibernateParamsMap;
         this.webParamsByMethod = StatementParser.parseWebParamsByMethod(method, hibernateParamsMap);
         this.funcParamByWebParam = StatementParser.parseFunctionParamByWebParam(hibernateParamsMap);
+    }
+
+    @Override
+    public HashSet<String> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(HashSet<String> roles) {
+        this.roles = roles;
+    }
+
+    public void setRole(String role) {
+        this.roles.add(role);
     }
 
     @Override

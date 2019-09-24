@@ -34,7 +34,7 @@ public class AppConfig {
         subGetter();
     }
 
-    private RedissonClient getRedClient() {
+    public RedissonClient getRedClient() {
         if (redClient == null) {
             Config config = new Config();
             config.useSingleServer()
