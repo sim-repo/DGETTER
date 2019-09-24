@@ -39,4 +39,14 @@ public class ProtoLogin implements Serializable {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    @Override
+    public String toString() {
+        return "ProtoLogin{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", expireInDays=" + expireInDays +
+                ", password='" + password + '\'' +
+                '}';
+    }
 }

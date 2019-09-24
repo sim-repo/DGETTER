@@ -23,12 +23,21 @@ public class Login implements Serializable {
     private String salt;
     private String token;
     private String oldToken;
-    private HashSet<String> roles;
+    private HashSet<String> roles = new HashSet<>();
 
     public Login() {}
 
     public Login(String name, String encryptedPassword, String salt, Date expire) {
         super();
+        this.name = name;
+        this.encryptedPassword = encryptedPassword;
+        this.salt = salt;
+        this.expire = expire;
+    }
+
+    public Login(Integer id, String name, String encryptedPassword, String salt, Date expire) {
+        super();
+        this.id = id;
         this.name = name;
         this.encryptedPassword = encryptedPassword;
         this.salt = salt;

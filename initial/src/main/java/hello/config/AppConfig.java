@@ -3,7 +3,7 @@ package hello.config;
 import hello.factory.JdbcTemplateFactory;
 import hello.model.connectors.JdbConnector;
 import hello.model.getter.DbGetter;
-import hello.security.model.Login;
+
 import org.redisson.Redisson;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;

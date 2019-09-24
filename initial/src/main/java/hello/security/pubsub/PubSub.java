@@ -6,9 +6,11 @@ import hello.security.AuthMgt;
 import hello.security.enums.AuthenticationModeEnum;
 import hello.security.model.Login;
 import hello.security.model.ProtoLogin;
+import org.redisson.Redisson;
 import org.redisson.api.RTopic;
 import org.redisson.api.RedissonClient;
 import org.redisson.api.listener.MessageListener;
+import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -25,6 +27,18 @@ public class PubSub {
     AppConfig appConfig;
 
     public PubSub() {
+        super();
+        setup();
+    }
+
+    public RedissonClient getRedClient() {
+        Config config = new Config();
+        config.useSingleServer()
+                .setAddress("redis://localhost:6379");
+        return Redisson.create(config);
+    }
+
+    public void setup(){
         //login:
         sub_addLogin();
         sub_syncLogin();
@@ -58,7 +72,7 @@ public class PubSub {
 
 
     private RedissonClient getClient() {
-        return appConfig.getRedClient();
+        return getRedClient();
     }
 
     //#################
@@ -91,10 +105,11 @@ public class PubSub {
                     return;
                 }
                 Login login = AuthMgt.addNewLogin(protoLogin);
-
                 loginById.put(login.getId(), login);
                 loginByUsername.put(login.getName(), login);
                 safetyAddToken(login);
+
+                showStatus();
             }
         });
     }
@@ -119,6 +134,7 @@ public class PubSub {
                 loginById.put(login.getId(), login);
                 loginByUsername.put(login.getName(), login);
                 safetyAddToken(login);
+                showStatus();
             }
         });
     }
@@ -131,9 +147,15 @@ public class PubSub {
             public void onMessage(CharSequence charSequence, Integer loginId) {
                 System.out.println("admin.remove.login: "+loginId);
                 Login login = getLoginById(loginId);
+                if (login == null) {
+                    //TODO throw err
+                    System.out.println("login is null");
+                    return;
+                }
                 loginById.remove(loginId);
                 loginByUsername.remove(login.getName());
                 safetyRemoveToken(login);
+                showStatus();
             }
         });
     }
@@ -158,11 +180,12 @@ public class PubSub {
                     if (login == null) {
                         // TODO throw error
                         System.out.println("admin.add.token: Login is null");
-                        return;
+                        continue;
                     }
                     safetyReplaceToken(login, entry.getValue());
                     System.out.println("admin.add.token: "+login.getToken());
                 }
+                showStatus();
             }
         });
     }
@@ -176,9 +199,15 @@ public class PubSub {
                 System.out.println("admin.clear.token: "+loginIds);
                 loginIds.forEach( loginId -> {
                     Login login = getLoginById(loginId);
-                    safetyRemoveToken(login);
-                    System.out.println("admin.add.token: Login is null");
+                    if (login == null) {
+                        // TODO throw error
+                        System.out.println("admin.add.token: Login is null");
+                    } else {
+                        safetyRemoveToken(login);
+                        System.out.println("admin.clear.token:"+ loginId);
+                    }
                 });
+                showStatus();
             }
         });
     }
@@ -262,6 +291,8 @@ public class PubSub {
                 System.out.println("admin.change.default_expire_in_days: "+expireInDays);
                 if(expireInDays <= 0) {
                     //TODO throw err
+                    System.out.println("admin.change.default_expire_in_days: xpireInDays <= 0");
+                    return;
                 }
                 AuthMgt.EXPIRE = expireInDays;
             }
@@ -275,15 +306,16 @@ public class PubSub {
     // add
     private void sub_addLoginRoles() {
         RTopic topic = getClient().getTopic("admin.add.login.roles");
-        topic.addListener(HashMap.class, new MessageListener<HashMap<String, String>>() {
+        topic.addListener(HashMap.class, new MessageListener<HashMap<Integer, String>>() {
             @Override
-            public void onMessage(CharSequence charSequence, HashMap<String, String> roleByLoginId) {
+            public void onMessage(CharSequence charSequence, HashMap<Integer, String> roleByLoginId) {
                 System.out.println("admin.add.login.roles: "+roleByLoginId);
-                for (Map.Entry<String, String> entry : roleByLoginId.entrySet()) {
-                    Login login = getLoginByUsername(entry.getKey());
+                for (Map.Entry<Integer, String> entry : roleByLoginId.entrySet()) {
+                    Login login = getLoginById(entry.getKey());
                     if(login == null) {
                         //TODO throw err
-                        return;
+                        System.out.println("admin.add.login.roles: Login is null");
+                        continue;
                     }
                     login.setRole(entry.getValue());
                     System.out.println("done!!! admin.add.login.roles: "+login.getRoles());
@@ -302,7 +334,8 @@ public class PubSub {
                     DbGetter getter = appConfig.getDbGetterById(entry.getKey());
                     if(getter == null) {
                         //TODO throw err
-                        return;
+                        System.out.println("admin.add.getter.roles: Login is null");
+                        continue;
                     }
                     getter.setRole(entry.getValue());
                     System.out.println("done!!! admin.add.getter.roles: "+getter.getRoles());
@@ -314,15 +347,17 @@ public class PubSub {
     //remove
     private void sub_removeLoginRoles() {
         RTopic topic = getClient().getTopic("admin.REMOVE.login.roles");
-        topic.addListener(HashMap.class, new MessageListener<HashMap<String, String>>() {
+        topic.addListener(HashMap.class, new MessageListener<HashMap<Integer, String>>() {
             @Override
-            public void onMessage(CharSequence charSequence, HashMap<String, String> roleByLoginId) {
-                System.out.println("admin.add.login.roles: "+roleByLoginId);
-                for (Map.Entry<String, String> entry : roleByLoginId.entrySet()) {
-                    Login login = getLoginByUsername(entry.getKey());
+            public void onMessage(CharSequence charSequence, HashMap<Integer, String> roleByLoginId) {
+                System.out.println("admin.REMOVE.login.roles: "+roleByLoginId);
+                for (Map.Entry<Integer, String> entry : roleByLoginId.entrySet()) {
+                    Login login = getLoginById(entry.getKey());
                     if(login == null) {
                         //TODO throw err
-                        return;
+                        //TODO throw err
+                        System.out.println("admin.REMOVE.login.roles: Login is null");
+                        continue;
                     }
                     login.getRoles().remove(entry.getValue());
                     System.out.println("done!!! admin.REMOVE.login.roles: "+login.getRoles());
@@ -341,12 +376,21 @@ public class PubSub {
                     DbGetter getter = appConfig.getDbGetterById(entry.getKey());
                     if(getter == null) {
                         //TODO throw err
-                        return;
+                        //TODO throw err
+                        System.out.println("admin.REMOVE.getter.roles: Login is null");
+                        continue;
                     }
                     getter.getRoles().remove(entry.getValue());
                     System.out.println("done!!! admin.REMOVE.getter.roles: "+getter.getRoles());
                 }
             }
         });
+    }
+
+    private void showStatus() {
+        System.out.println("loginByUsername:"+loginByUsername.size());
+        System.out.println("loginById:"+loginById.size());
+        System.out.println("loginByToken:"+loginByToken.size());
+        System.out.println("activeTokens:"+activeTokens.size());
     }
 }

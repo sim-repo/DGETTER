@@ -87,7 +87,7 @@ public class AuthMgt {
         String encryptedPsw = generateSecurePassword(protoLogin.getPassword(), salt);
         int expireDays = protoLogin.getExpireInDays() == 0 ? EXPIRE : protoLogin.getExpireInDays();
         Date expire = new DateTime(new Date()).plusDays(expireDays).toDate();
-        Login login = new Login(protoLogin.getName(), encryptedPsw, salt, expire);
+        Login login = new Login(protoLogin.getId(), protoLogin.getName(), encryptedPsw, salt, expire);
         return login;
     }
 
