@@ -37,9 +37,16 @@ public class GetterService {
         return exec(getter, sql, getter.getEndpointId());
     }
 
+    private void testCheck(Integer i){
+        System.out.println(i);
+    }
 
     public String exec(String endpointId, String method,  String params) throws Exception {
         DbGetter getter = appConfig.getDbGetter(endpointId, method);
+        if (getter == null) {
+            //TODO throw err
+            return null;
+        }
         Map<String, String> parsedParams = getQueryParameters(params);
         String sql = getSQLStatement(getter, parsedParams);
         if (sql==null) return null;

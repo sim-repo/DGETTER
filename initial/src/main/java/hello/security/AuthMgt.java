@@ -232,7 +232,7 @@ public class AuthMgt {
     // Authorization Functions:
     // #########################
     public Boolean checkAuthorization(HttpServletRequest request) {
-        if (!enabledAuthorization || AuthenticationModeEnum.NONE.equals(AUTH_MODE)) return null;
+        if (!enabledAuthorization || AuthenticationModeEnum.NONE.equals(AUTH_MODE)) return true;
         String endpoint = request.getParameter("endpointId");
         String method = request.getParameter("method");
         String token = request.getHeader(HEADER_STRING);

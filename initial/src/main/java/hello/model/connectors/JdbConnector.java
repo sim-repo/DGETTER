@@ -1,9 +1,15 @@
 package hello.model.connectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import hello.enums.ConnectorEnum;
+
 
 import java.io.Serializable;
 
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonDeserialize(as = JdbConnector.class)
 public class JdbConnector implements Serializable {
     private Integer id;
     private String code = "";

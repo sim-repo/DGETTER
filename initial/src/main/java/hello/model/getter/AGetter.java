@@ -20,7 +20,7 @@ public abstract class AGetter implements IGetter{
     private String resultType;
     private String description;
     private Boolean isAllAccess = false;
-    private HashSet<String> roles;
+    private HashSet<String> roles = new HashSet<>();
 
     public Integer getId() {
         return id;
@@ -130,10 +130,15 @@ public abstract class AGetter implements IGetter{
     }
 
     public void setRoles(HashSet<String> roles) {
-        this.roles = roles;
+        if(roles != null) {
+            this.roles = roles;
+        }
     }
 
     public void setRole(String role) {
+        if (roles == null) {
+            roles = new HashSet<>();
+        }
         this.roles.add(role);
     }
 

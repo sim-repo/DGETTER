@@ -91,6 +91,7 @@ public class AppConfig {
                 System.out.println("TAKE getter");
                 System.out.println(getter);
                 getterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
+                System.out.println("sssssss");
                 getterById.put(getter.getId(), getter);
                 System.out.println("Total: "+getterMap.size());
             }

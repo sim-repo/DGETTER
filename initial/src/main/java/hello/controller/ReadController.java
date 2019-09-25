@@ -46,6 +46,9 @@ public class ReadController {
         return null;
     }
 
+
+
+
     //TODO add authorization by token
     @RequestMapping(value = "/db", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
     public ResponseEntity<String> jsonDBUniGet(HttpServletRequest request){
@@ -68,14 +71,19 @@ public class ReadController {
             String endpoint = request.getParameter("endpointId");
             String method = request.getParameter("method");
 
-            if (!authMgt.checkAuthorization(request)) {
-                return new ResponseEntity<>("No permissions", responseHeaders, HttpStatus.FORBIDDEN);
+            Boolean checked = authMgt.checkAuthorization(request);
+            if (checked == false) {
+                return new ResponseEntity<>("User authorization failed.", responseHeaders, HttpStatus.FORBIDDEN);
             }
 
+            if(request.getQueryString()==null) {
+                return new ResponseEntity<>("query string is null", responseHeaders, HttpStatus.BAD_REQUEST);
+            }
             String body = getterService.exec(endpoint, method, request.getQueryString());
             return new ResponseEntity<>(body, responseHeaders, HttpStatus.OK);
         } catch (Exception ex) {
-            return new ResponseEntity<>(ex.getMessage(), responseHeaders, HttpStatus.OK);
+            System.out.println(ex.getMessage());
+            return new ResponseEntity<>(ex.getMessage(), responseHeaders, HttpStatus.BAD_REQUEST);
         }
     }
 
