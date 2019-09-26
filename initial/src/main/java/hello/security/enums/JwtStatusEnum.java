@@ -1,8 +1,13 @@
 package hello.security.enums;
 
 public enum JwtStatusEnum {
-
-    Authorized("Authorized"), Expired("Expired"), UnAuhorized("UnAuhorized"), InternalServerError("UnAuhorized"), RevokeToken("RevokeToken") ;
+    NotAuthenticated("NotAuthenticated"),
+    Authorized("Authorized"),
+    Expired("Expired"),
+    NotAuthorized("NotAuthorized"),
+    InternalServerError("InternalServerError"),
+    RevokeToken("RevokeToken"),
+    NoSettings("NoSettings");
 
     private final String value;
 
@@ -26,6 +31,6 @@ public enum JwtStatusEnum {
     }
 
     public static JwtStatusEnum getDefault() {
-        return UnAuhorized;
+        return NotAuthorized;
     }
 }

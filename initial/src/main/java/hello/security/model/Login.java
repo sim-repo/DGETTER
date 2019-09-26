@@ -63,7 +63,7 @@ public class Login implements Serializable {
         return encryptedPassword;
     }
     public void setEncryptedPassword(String encryptedPassword) {
-        this.encryptedPassword = this.encryptedPassword;
+        this.encryptedPassword = encryptedPassword;
     }
     public Date getExpire() {
         return expire;

@@ -39,7 +39,7 @@ public class AppConfig {
         if (redClient == null) {
             Config config = new Config();
             config.useSingleServer()
-                    .setAddress("redis://localhost:6379");
+                    .setAddress("redis://192.168.1.70:6379");
             redClient = Redisson.create(config);
         }
         return redClient;
@@ -71,7 +71,6 @@ public class AppConfig {
         topic.addListener(JdbConnector.class, new MessageListener<JdbConnector>() {
             @Override
             public void onMessage(CharSequence charSequence, JdbConnector conn) {
-                System.out.println("TAKE connector");
                 System.out.println(conn);
                 JdbcTemplate t = JdbcTemplateFactory.getJdbcTemplate(conn);
                 jdbcTemplateMap.put(conn.getEndpointId(), t);
@@ -88,10 +87,8 @@ public class AppConfig {
         topic.addListener(DbGetter.class, new MessageListener<DbGetter>() {
             @Override
             public void onMessage(CharSequence charSequence, DbGetter getter) {
-                System.out.println("TAKE getter");
                 System.out.println(getter);
                 getterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
-                System.out.println("sssssss");
                 getterById.put(getter.getId(), getter);
                 System.out.println("Total: "+getterMap.size());
             }

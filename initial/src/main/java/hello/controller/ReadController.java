@@ -2,6 +2,7 @@ package hello.controller;
 
 import hello.helper.ObjectConverter;
 import hello.security.AuthMgt;
+import hello.security.enums.JwtStatusEnum;
 import hello.service.GetterService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -71,9 +72,9 @@ public class ReadController {
             String endpoint = request.getParameter("endpointId");
             String method = request.getParameter("method");
 
-            Boolean checked = authMgt.checkAuthorization(request);
-            if (checked == false) {
-                return new ResponseEntity<>("User authorization failed.", responseHeaders, HttpStatus.FORBIDDEN);
+            JwtStatusEnum status = authMgt.checkAuthorization(request);
+            if (!status.equals(JwtStatusEnum.Authorized)) {
+                return new ResponseEntity<>(status.toValue(), responseHeaders, HttpStatus.FORBIDDEN);
             }
 
             if(request.getQueryString()==null) {

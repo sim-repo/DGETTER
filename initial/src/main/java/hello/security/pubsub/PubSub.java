@@ -34,7 +34,7 @@ public class PubSub {
     public RedissonClient getRedClient() {
         Config config = new Config();
         config.useSingleServer()
-                .setAddress("redis://localhost:6379");
+                .setAddress("redis://192.168.1.70:6379");
         return Redisson.create(config);
     }
 
@@ -374,10 +374,10 @@ public class PubSub {
                 System.out.println("admin.REMOVE.getter.roles: "+roleByGetterId);
                 for (Map.Entry<Integer, String> entry : roleByGetterId.entrySet()) {
                     DbGetter getter = appConfig.getDbGetterById(entry.getKey());
-                    if(getter == null) {
+                    if(getter == null || getter.getRoles() == null) {
                         //TODO throw err
                         //TODO throw err
-                        System.out.println("admin.REMOVE.getter.roles: Login is null");
+                        System.out.println("admin.REMOVE.getter.roles: Login or Roles is null");
                         continue;
                     }
                     getter.getRoles().remove(entry.getValue());
@@ -386,6 +386,8 @@ public class PubSub {
             }
         });
     }
+
+
 
     private void showStatus() {
         System.out.println("loginByUsername:"+loginByUsername.size());

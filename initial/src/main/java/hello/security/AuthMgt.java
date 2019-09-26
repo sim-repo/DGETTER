@@ -108,7 +108,7 @@ public class AuthMgt {
         }
         String salt = getSalt();
         login.setSalt(salt);
-        String encryptedPassword = generateSecurePassword(newPassword, salt);
+        String encryptedPassword = generateSecurePassword(newPassword, login.getSalt());
         login.setEncryptedPassword(encryptedPassword);
         syncLogin(login);
         return token;
@@ -168,7 +168,7 @@ public class AuthMgt {
 
     private ResponseEntity<String> checkJWT(HttpServletRequest request) {
         ResponseEntity<String> res;
-        JwtStatusEnum status = JwtStatusEnum.UnAuhorized;
+        JwtStatusEnum status = JwtStatusEnum.NotAuthorized;
         try {
             if (!isAuthenticated(request)) {
                 try {
@@ -202,9 +202,9 @@ public class AuthMgt {
             if (login != null) {
                 return isExpired(request, login.getExpire());
             }
-            return JwtStatusEnum.UnAuhorized;
+            return JwtStatusEnum.NotAuthorized;
         }
-        return JwtStatusEnum.UnAuhorized;
+        return JwtStatusEnum.NotAuthorized;
     }
 
 
@@ -217,7 +217,7 @@ public class AuthMgt {
                 break;
             case Expired:
                 return new ResponseEntity<>("token has expired", responseHeaders, HttpStatus.UPGRADE_REQUIRED);
-            case UnAuhorized:
+            case NotAuthorized:
                 return new ResponseEntity<>("", responseHeaders, HttpStatus.UNAUTHORIZED);
             case InternalServerError:
                 return new ResponseEntity<>("", responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -231,15 +231,30 @@ public class AuthMgt {
     // #########################
     // Authorization Functions:
     // #########################
-    public Boolean checkAuthorization(HttpServletRequest request) {
-        if (!enabledAuthorization || AuthenticationModeEnum.NONE.equals(AUTH_MODE)) return true;
+    public JwtStatusEnum checkAuthorization(HttpServletRequest request) {
+        if (!enabledAuthorization || AuthenticationModeEnum.NONE.equals(AUTH_MODE)) return JwtStatusEnum.Authorized;
         String endpoint = request.getParameter("endpointId");
         String method = request.getParameter("method");
         String token = request.getHeader(HEADER_STRING);
         Login login = pubSub.getLoginByToken(token);
+        if(login==null) {
+            return JwtStatusEnum.NotAuthenticated;
+        }
         IGetter getter = appConfig.getDbGetter(endpoint, method);
+        if(getter==null){
+            return JwtStatusEnum.NoSettings;
+        }
+        if(login.getRoles()==null){
+            return JwtStatusEnum.NotAuthorized;
+        }
+        if(getter.getRoles()==null){
+            return JwtStatusEnum.NoSettings;
+        }
         Set<String> intersection = Sets.intersection(login.getRoles(), getter.getRoles());
-        return intersection.size() > 0;
+        if(intersection.size() > 0){
+            return JwtStatusEnum.Authorized;
+        }
+        return JwtStatusEnum.NotAuthorized;
     }
 
 
