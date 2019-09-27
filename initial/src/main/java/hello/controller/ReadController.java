@@ -1,7 +1,7 @@
 package hello.controller;
 
 import hello.helper.ObjectConverter;
-import hello.security.AuthMgt;
+import hello.security.JwtAuthMgt;
 import hello.security.enums.JwtStatusEnum;
 import hello.service.GetterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,15 +23,12 @@ import java.util.Map;
 @Controller
 public class ReadController {
 
-    @Autowired
-    private
-    AuthMgt authMgt;
 
     @Autowired
     private GetterService getterService;
 
     private static ResponseEntity<String> getBadResponse(String absentParam){
-        return new ResponseEntity<String>("Required parameter is not specified: "+absentParam, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("Required parameter is not specified: "+absentParam, HttpStatus.BAD_REQUEST);
     }
 
     private String validate(HttpServletRequest request) {
@@ -57,7 +54,7 @@ public class ReadController {
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
         // check authentication
-        ResponseEntity<String> invalid = authMgt.checkAuthentication(request);
+        ResponseEntity<String> invalid = JwtAuthMgt.checkAuthentication(request);
         try {
             // if not authenticated
             if (invalid != null) {
@@ -72,7 +69,7 @@ public class ReadController {
             String endpoint = request.getParameter("endpointId");
             String method = request.getParameter("method");
 
-            JwtStatusEnum status = authMgt.checkAuthorization(request);
+            JwtStatusEnum status = JwtAuthMgt.checkAuthorization(request);
             if (!status.equals(JwtStatusEnum.Authorized)) {
                 return new ResponseEntity<>(status.toValue(), responseHeaders, HttpStatus.FORBIDDEN);
             }
@@ -87,6 +84,7 @@ public class ReadController {
             return new ResponseEntity<>(ex.getMessage(), responseHeaders, HttpStatus.BAD_REQUEST);
         }
     }
+
 
     //TODO add authorization by token
     @RequestMapping(value = "/db64", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")

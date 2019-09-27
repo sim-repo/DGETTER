@@ -17,32 +17,20 @@ import hello.security.enums.AuthenticationModeEnum;
 import hello.security.enums.JwtStatusEnum;
 import hello.security.model.Login;
 import hello.security.model.ProtoLogin;
-import hello.security.pubsub.PubSub;
+import hello.security.pubsub.JwtPubSub;
 import io.jsonwebtoken.*;
 import org.joda.time.DateTime;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 
 
-@Component("authMgt")
-@Scope("singleton")
-public class AuthMgt {
-
-    @Autowired
-    AppConfig appConfig;
-
-    @Autowired
-    PubSub pubSub;
+public class JwtAuthMgt {
 
     private static final Random RANDOM = new SecureRandom();
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     private static final int ITERATIONS = 10000;
     private static final int KEY_LENGTH = 256;
-
 
     private static final String SECRET = "ThisIsASecret";
 
@@ -100,7 +88,7 @@ public class AuthMgt {
     // --new salt
     // --new expire
     // #########################
-    public String tryChangePsw(Login login, String oldPassword, String newPassword) {
+    public static String tryChangePsw(Login login, String oldPassword, String newPassword) {
         String token = tryCreateToken(login, oldPassword);
         if (token == null) {
             // TODO throw err
@@ -122,7 +110,7 @@ public class AuthMgt {
     // --remove old token
     // --new expire
     // #########################
-    public String tryRecreateToken(Login login, String password) {
+    public static String tryRecreateToken(Login login, String password) {
         String token = tryCreateToken(login, password);
         if (token == null) {
             // TODO throw err
@@ -141,32 +129,22 @@ public class AuthMgt {
     // null if authentication == success
     // #########################
 
-    public ResponseEntity<String> checkAuthentication(HttpServletRequest request) {
+    public static ResponseEntity<String> checkAuthentication(HttpServletRequest request) {
         switch (AUTH_MODE) {
             case NONE:
                 return null;
             case JWT:
                 return checkJWT(request);
             case BASIC:
-                return checkBasic(request);
+                return BasicAuthMgt.checkBasic(request);
         }
         return null;
     }
 
 
-    private ResponseEntity<String> checkBasic(HttpServletRequest request) {
-        final String authorization = request.getHeader("Authorization");
-        if (authorization != null && authorization.toLowerCase().startsWith("basic")) {
-            String base64Credentials = authorization.substring("Basic".length()).trim();
-            byte[] credDecoded = Base64.getDecoder().decode(base64Credentials);
-            String credentials = new String(credDecoded, StandardCharsets.UTF_8);
-            final String[] values = credentials.split(":", 2);
-            System.out.println(values[0]+":"+values[1]);
-        }
-        return null;
-    }
 
-    private ResponseEntity<String> checkJWT(HttpServletRequest request) {
+
+    private static ResponseEntity<String> checkJWT(HttpServletRequest request) {
         ResponseEntity<String> res;
         JwtStatusEnum status = JwtStatusEnum.NotAuthorized;
         try {
@@ -186,15 +164,15 @@ public class AuthMgt {
         return null;
     }
 
-    private Boolean isAuthenticated(HttpServletRequest request) {
+    private static Boolean isAuthenticated(HttpServletRequest request) {
         String token = request.getHeader(HEADER_STRING);
         if (token != null) {
-            return pubSub.getActiveTokens().contains(token);
+            return JwtPubSub.getActiveTokens().contains(token);
         }
         return false;
     }
 
-    private JwtStatusEnum doAuthentication(HttpServletRequest request) {
+    private static JwtStatusEnum doAuthentication(HttpServletRequest request) {
         String token = request.getHeader(HEADER_STRING);
         if (token != null) {
             String username = Jwts.parser().setSigningKey(SECRET).parseClaimsJws(token.replace(TOKEN_PREFIX, "")).getBody().getSubject();
@@ -208,7 +186,7 @@ public class AuthMgt {
     }
 
 
-    private ResponseEntity<String> forward(ServletRequest request, JwtStatusEnum status) throws IOException {
+    private static ResponseEntity<String> forward(ServletRequest request, JwtStatusEnum status) throws IOException {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpHeaders responseHeaders = new HttpHeaders();
         responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
@@ -231,16 +209,16 @@ public class AuthMgt {
     // #########################
     // Authorization Functions:
     // #########################
-    public JwtStatusEnum checkAuthorization(HttpServletRequest request) {
+    public static JwtStatusEnum checkAuthorization(HttpServletRequest request) {
         if (!enabledAuthorization || AuthenticationModeEnum.NONE.equals(AUTH_MODE)) return JwtStatusEnum.Authorized;
         String endpoint = request.getParameter("endpointId");
         String method = request.getParameter("method");
         String token = request.getHeader(HEADER_STRING);
-        Login login = pubSub.getLoginByToken(token);
+        Login login = JwtPubSub.getLoginByToken(token);
         if(login==null) {
             return JwtStatusEnum.NotAuthenticated;
         }
-        IGetter getter = appConfig.getDbGetter(endpoint, method);
+        IGetter getter = AppConfig.getDbGetter(endpoint, method);
         if(getter==null){
             return JwtStatusEnum.NoSettings;
         }
@@ -261,8 +239,8 @@ public class AuthMgt {
     // #########################
     // Login Functions:
     // #########################
-    public Login getLogin(String username){
-        return pubSub.getLoginByUsername(username);
+    public static Login getLogin(String username){
+        return JwtPubSub.getLoginByUsername(username);
     }
 
 
@@ -273,7 +251,7 @@ public class AuthMgt {
 
 
     // creates token for verified users only
-    private String tryCreateToken(Login login, String password) {
+    public static String tryCreateToken(Login login, String password) {
         if (verifyUserPassword(password, login.getEncryptedPassword(), login.getSalt())) {
             Date expire = new DateTime(new Date()).plusDays(EXPIRE).toDate();
             login.setExpire(expire);
@@ -287,12 +265,12 @@ public class AuthMgt {
         return null;
     }
 
-    private boolean verifyUserPassword(String userPassword, String encryptedPasswordFromRepo, String salt) {
+    public static boolean verifyUserPassword(String userPassword, String encryptedPasswordFromRepo, String salt) {
         String userEncryptedPassword = generateSecurePassword(userPassword, salt);
         return userEncryptedPassword.equalsIgnoreCase(encryptedPasswordFromRepo);
     }
 
-    private static String getSalt() {
+    public static String getSalt() {
         StringBuilder returnValue = new StringBuilder(30);
         for (int i = 0; i < 30; i++) {
             returnValue.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
@@ -313,17 +291,17 @@ public class AuthMgt {
         }
     }
 
-    private static String generateSecurePassword(String password, String salt) {
+    public static String generateSecurePassword(String password, String salt) {
         byte[] securePassword = hash(password.toCharArray(), salt.getBytes());
         return Base64.getEncoder().encodeToString(securePassword);
     }
 
 
-    public void changeExpire(Login login, int expireInDays) {
+    public static void changeExpire(Login login, int expireInDays) {
         login.setExpire(new DateTime(new Date()).plusDays(expireInDays).toDate());
     }
 
-    private JwtStatusEnum isExpired(HttpServletRequest request, Date untilDate) {
+    private static JwtStatusEnum isExpired(HttpServletRequest request, Date untilDate) {
         if (untilDate == null) {
             return JwtStatusEnum.RevokeToken;
         }
@@ -336,8 +314,8 @@ public class AuthMgt {
     }
 
 
-    private void syncLogin(Login login) {
-        pubSub.pub_syncLogin(login);
+    public static void syncLogin(Login login) {
+        JwtPubSub.pub_syncLogin(login);
     }
 
 

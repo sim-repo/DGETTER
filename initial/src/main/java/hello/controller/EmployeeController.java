@@ -1,6 +1,6 @@
 package hello.controller;
 
-import hello.security.AuthMgt;
+import hello.security.JwtAuthMgt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +21,6 @@ import javax.servlet.http.HttpSession;
 @RequestMapping(path = "/foo")
 public class EmployeeController {
 
-    @Autowired
-    AuthMgt authMgt;
-
     @GetMapping(path="/", produces = "application/json")
     public String getEmployees()
     {
@@ -35,19 +32,5 @@ public class EmployeeController {
     public String retrieveMaxSessionIncativeInterval(HttpSession session) {
         //session.setMaxInactiveInterval(1*20);
         return "Max Inactive Interval before Session expires: " + session.getMaxInactiveInterval();
-    }
-
-    private static final Logger LOG = LoggerFactory.getLogger(EmployeeController.class);
-
-    @GetMapping("/spam")
-    public ResponseEntity<String> testSessionListner(HttpServletRequest request, HttpServletResponse response){
-        HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
-        ResponseEntity<String> res = authMgt.checkAuthentication(request);
-        if (res != null) {
-            return res;
-        }
-        System.out.println("PROCESSING.....");
-        return new ResponseEntity<String>("ok", responseHeaders, HttpStatus.OK);
     }
 }
