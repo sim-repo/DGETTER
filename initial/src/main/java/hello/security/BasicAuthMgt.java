@@ -33,6 +33,15 @@ public class BasicAuthMgt {
     }
 
 
+    public static String[] getLoginPassword(HttpServletRequest request){
+        final String authorization = request.getHeader("Authorization");
+        String base64Credentials = authorization.substring("Basic".length()).trim();
+        byte[] credDecoded = Base64.getDecoder().decode(base64Credentials);
+        String credentials = new String(credDecoded, StandardCharsets.UTF_8);
+        final String[] values = credentials.split(":", 2);
+        return  values;
+    }
+
     public static ResponseEntity<String> checkBasic(HttpServletRequest request) {
         final String authorization = request.getHeader("Authorization");
         if(authorization == null) {

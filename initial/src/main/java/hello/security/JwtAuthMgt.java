@@ -10,6 +10,7 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
 
+import antlr.debug.NewLineEvent;
 import com.google.common.collect.Sets;
 import hello.config.AppConfig;
 import hello.model.getter.IGetter;
@@ -214,14 +215,34 @@ public class JwtAuthMgt {
         String endpoint = request.getParameter("endpointId");
         String method = request.getParameter("method");
         String token = request.getHeader(HEADER_STRING);
-        Login login = JwtPubSub.getLoginByToken(token);
-        if(login==null) {
-            return JwtStatusEnum.NotAuthenticated;
+
+        Login login = null;
+        if (JwtAuthMgt.AUTH_MODE.equals(AuthenticationModeEnum.JWT)) {
+            login = JwtPubSub.getLoginByToken(token);
+            if(login==null) {
+                return JwtStatusEnum.NotAuthenticated;
+            }
         }
+
+        if (JwtAuthMgt.AUTH_MODE.equals(AuthenticationModeEnum.BASIC)) {
+          String[] login_password = BasicAuthMgt.getLoginPassword(request);
+          login = JwtPubSub.getLoginByUsername(login_password[0]);
+        }
+
+        if(login == null){
+            return JwtStatusEnum.NotAuthorized;
+        }
+
         IGetter getter = AppConfig.getDbGetter(endpoint, method);
         if(getter==null){
             return JwtStatusEnum.NoSettings;
         }
+
+        //public access
+        if((login.getRoles()==null || login.getRoles().size()==0) && (getter.getRoles()==null || getter.getRoles().size()==0)) {
+            return JwtStatusEnum.Authorized;
+        }
+
         if(login.getRoles()==null){
             return JwtStatusEnum.NotAuthorized;
         }

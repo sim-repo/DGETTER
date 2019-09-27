@@ -6,6 +6,7 @@ import hello.model.getter.DbGetter;
 
 import hello.security.JwtAuthMgt;
 import hello.security.enums.AuthenticationModeEnum;
+import hello.security.enums.JwtStatusEnum;
 import hello.security.pubsub.JwtPubSub;
 import org.redisson.Redisson;
 import org.redisson.api.RMap;
@@ -44,6 +45,7 @@ public class AppConfig {
         JwtPubSub.preload_defaultExpire();
         JwtPubSub.preload_addLoginRoles();
         JwtPubSub.preload_addGettersRoles();
+        JwtPubSub.preload_syncLogin();
         preload_JdbConnector();
         preload_Getter();
 
@@ -55,7 +57,7 @@ public class AppConfig {
         if (redClient == null) {
             Config config = new Config();
             config.useSingleServer()
-                    .setAddress("redis://127.0.0.1:6379");
+                    .setAddress("redis://192.168.1.70:6379");
             redClient = Redisson.create(config);
         }
         return redClient;

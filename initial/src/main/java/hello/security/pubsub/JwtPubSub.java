@@ -120,15 +120,16 @@ public class JwtPubSub {
         safetyAddToken(login);
         RTopic topic = getClient().getTopic("admin.sync.login");
         topic.publish(login);
+        persist_syncLogin(login);
     }
 
     // sub sync
     private static void sub_syncLogin() {
-        RTopic topic = getClient().getTopic("admin.add.login");
+        RTopic topic = getClient().getTopic("admin.sync.login");
         topic.addListener(Login.class, new MessageListener<Login>() {
             @Override
             public void onMessage(CharSequence charSequence, Login login) {
-                System.out.println("admin.add.login: "+login);
+                System.out.println("admin.sync.login: "+login);
                 loginById.put(login.getId(), login);
                 loginByUsername.put(login.getName(), login);
                 if (JwtAuthMgt.AUTH_MODE.equals(AuthenticationModeEnum.JWT)) {
@@ -138,6 +139,35 @@ public class JwtPubSub {
             }
         });
     }
+
+    private static void persist_syncLogin(Login login) {
+        HashMap<Integer, Login> m = new HashMap<>();
+        m.put(login.getId(), login);
+        RMap<Integer, Login> map = getClient().getMap("logins");
+        for(Map.Entry<Integer,Login> element : m.entrySet()){
+            map.fastPut(element.getKey(), element.getValue());
+        }
+    }
+
+    public static void preload_syncLogin(){
+        System.out.println("");
+        System.out.println("==============");
+        System.out.println("logins by ids:");
+        System.out.println("==============");
+        RMap<Integer, Login> map = getClient().getMap("logins");
+        for(Map.Entry<Integer,Login> element : map.entrySet()){
+            System.out.println(element.getValue());
+            Login login = element.getValue();
+            loginById.put(login.getId(), login);
+            loginByUsername.put(login.getName(), login);
+            if (JwtAuthMgt.AUTH_MODE.equals(AuthenticationModeEnum.JWT)) {
+                safetyAddToken(login);
+            }
+        }
+    }
+
+
+
 
     // remove
     private static void sub_removeLoginById() {
