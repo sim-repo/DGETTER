@@ -4,5 +4,4 @@ ARG DEPENDENCY=target/dependency
 COPY ${DEPENDENCY}/BOOT-INF/lib /app/lib
 COPY ${DEPENDENCY}/META-INF /app/META-INF
 COPY ${DEPENDENCY}/BOOT-INF/classes /app
-ENTRYPOIN
- ","-cp","app:app/lib/*","hello.Application"]
+ENTRYPOINT ["java -DRedisURL="192.168.254.155" ","-cp","app:app/lib/*","hello.Application"]
