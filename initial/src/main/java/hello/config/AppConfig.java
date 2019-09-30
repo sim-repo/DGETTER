@@ -15,12 +15,12 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 
 //mvnw package && java -jar target/gs-spring-boot-docker-0.1.0.jar
+//mvnw package && java -DredisURL="redis://127.0.0.1:6379" -jar target/gs-spring-boot-docker-0.1.0.jar
 
 @Service("appConfig")
 @Scope("singleton")
@@ -32,9 +32,15 @@ public class AppConfig {
     private static ConcurrentHashMap<String,JdbConnector> connectorMap = new ConcurrentHashMap<String, JdbConnector>();
 
     private static RedissonClient redClient = null;
+    private static String RedisURL="";
 
-    public AppConfig() {
-        super();
+
+    public void setup(String _redisURL) {
+        RedisURL = _redisURL;
+        Config config = new Config();
+        config.useSingleServer().setAddress(RedisURL);
+        redClient = Redisson.create(config);
+
         CommonSub.setup();
         preload_JdbConnector();
         preload_Getter();
@@ -43,13 +49,8 @@ public class AppConfig {
         subGetter();
     }
 
+
     public static RedissonClient getRedClient() {
-        if (redClient == null) {
-            Config config = new Config();
-            config.useSingleServer()
-                    .setAddress("redis://127.0.0.1:6379");
-            redClient = Redisson.create(config);
-        }
         return redClient;
     }
 
