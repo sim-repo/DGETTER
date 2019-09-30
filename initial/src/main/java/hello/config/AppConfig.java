@@ -4,10 +4,7 @@ import hello.factory.JdbcTemplateFactory;
 import hello.model.connectors.JdbConnector;
 import hello.model.getter.DbGetter;
 
-import hello.security.JwtAuthMgt;
-import hello.security.enums.AuthenticationModeEnum;
-import hello.security.enums.JwtStatusEnum;
-import hello.security.pubsub.JwtPubSub;
+import hello.security.CommonSub;
 import org.redisson.Redisson;
 import org.redisson.api.RMap;
 import org.redisson.api.RTopic;
@@ -17,6 +14,7 @@ import org.redisson.config.Config;
 import org.springframework.context.annotation.Scope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,15 +35,7 @@ public class AppConfig {
 
     public AppConfig() {
         super();
-        JwtPubSub.setup();
-        JwtPubSub.preload_authenticationMode();
-        JwtPubSub.preload_authorizationMode();
-        JwtPubSub.preload_addLogin();
-        JwtPubSub.preload_addToken();
-        JwtPubSub.preload_defaultExpire();
-        JwtPubSub.preload_addLoginRoles();
-        JwtPubSub.preload_addGettersRoles();
-        JwtPubSub.preload_syncLogin();
+        CommonSub.setup();
         preload_JdbConnector();
         preload_Getter();
 
@@ -57,7 +47,7 @@ public class AppConfig {
         if (redClient == null) {
             Config config = new Config();
             config.useSingleServer()
-                    .setAddress("redis://192.168.1.70:6379");
+                    .setAddress("redis://127.0.0.1:6379");
             redClient = Redisson.create(config);
         }
         return redClient;
@@ -87,25 +77,9 @@ public class AppConfig {
         topic.addListener(JdbConnector.class, new MessageListener<JdbConnector>() {
             @Override
             public void onMessage(CharSequence charSequence, JdbConnector conn) {
-                System.out.println(conn);
-                JdbcTemplate t = JdbcTemplateFactory.getJdbcTemplate(conn);
-                jdbcTemplateMap.put(conn.getEndpointId(), t);
-                connectorMap.put(conn.getEndpointId(), conn);
-                System.out.println("Total: "+jdbcTemplateMap.size());
-            }
-        });
-    }
-
-    private void subGetter(){
-        RTopic topic = getRedClient().getTopic("getter");
-
-        topic.addListener(DbGetter.class, new MessageListener<DbGetter>() {
-            @Override
-            public void onMessage(CharSequence charSequence, DbGetter getter) {
-                System.out.println(getter);
-                getterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
-                getterById.put(getter.getId(), getter);
-                System.out.println("Total: "+getterMap.size());
+                addJdbcConnector(conn);
+                System.out.println("-----");
+                System.out.println("total: "+jdbcTemplateMap.size());
             }
         });
     }
@@ -117,14 +91,34 @@ public class AppConfig {
         System.out.println("===============");
         RMap<Integer, JdbConnector> map = getRedClient().getMap("jdbcConnectors");
         for(Map.Entry<Integer,JdbConnector> element : map.entrySet()){
-            JdbConnector conn = element.getValue();
-            System.out.println(element.getKey()+":"+conn);
-            JdbcTemplate t = JdbcTemplateFactory.getJdbcTemplate(conn);
-            jdbcTemplateMap.put(conn.getEndpointId(), t);
-            connectorMap.put(conn.getEndpointId(), conn);
+            addJdbcConnector(element.getValue());
         }
-        System.out.println("Total: "+jdbcTemplateMap.size());
+        System.out.println("-----");
+        System.out.println("total: "+jdbcTemplateMap.size());
     }
+
+    private static void addJdbcConnector(JdbConnector connector){
+        JdbcTemplate t = JdbcTemplateFactory.getJdbcTemplate(connector);
+        jdbcTemplateMap.put(connector.getEndpointId(), t);
+        connectorMap.put(connector.getEndpointId(), connector);
+        System.out.println("id:["+connector.getId()+"]");
+    }
+
+
+    private void subGetter(){
+        RTopic topic = getRedClient().getTopic("getter");
+
+        topic.addListener(DbGetter.class, new MessageListener<DbGetter>() {
+            @Override
+            public void onMessage(CharSequence charSequence, DbGetter getter) {
+                addGetter(getter);
+                System.out.println("-----");
+                System.out.println("total: "+getterMap.size());
+            }
+        });
+    }
+
+
 
     private static void preload_Getter() {
         System.out.println("");
@@ -134,11 +128,16 @@ public class AppConfig {
         RMap<Integer, DbGetter> map = getRedClient().getMap("jdbcGetter");
         for(Map.Entry<Integer,DbGetter> element : map.entrySet()){
             DbGetter getter = element.getValue();
-            System.out.println(element.getKey()+":"+getter);
-            getterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
-            getterById.put(getter.getId(), getter);
+            addGetter(getter);
         }
-        System.out.println("Total: "+getterMap.size());
+        System.out.println("-----");
+        System.out.println("total: "+getterMap.size());
+    }
+
+    private static void addGetter(DbGetter getter) {
+        getterMap.put(getter.getEndpointId()+getter.getMethod(), getter);
+        getterById.put(getter.getId(), getter);
+        System.out.println("id:["+getter.getId()+"]");
     }
 
 }

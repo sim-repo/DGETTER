@@ -1,7 +1,7 @@
 package hello.controller;
 
 import hello.helper.ObjectConverter;
-import hello.security.JwtAuthMgt;
+import hello.security.SecureCheck;
 import hello.security.enums.JwtStatusEnum;
 import hello.service.GetterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +28,7 @@ public class ReadController {
     private GetterService getterService;
 
     private static ResponseEntity<String> getBadResponse(String absentParam){
-        return new ResponseEntity<>("Required parameter is not specified: "+absentParam, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("Error: required parameter is not specified: "+absentParam, HttpStatus.BAD_REQUEST);
     }
 
     private String validate(HttpServletRequest request) {
@@ -45,43 +45,42 @@ public class ReadController {
     }
 
 
-
-
-    //TODO add authorization by token
     @RequestMapping(value = "/db", method = RequestMethod.GET, produces = "text/plain;charset=UTF-8")
     public ResponseEntity<String> jsonDBUniGet(HttpServletRequest request){
-    
-        HttpHeaders responseHeaders = new HttpHeaders();
-        responseHeaders.add("Content-Type", "text/plain;charset=utf-8");
-        // check authentication
-        ResponseEntity<String> invalid = JwtAuthMgt.checkAuthentication(request);
+
+        // 1. check authentication
+        String invalidStr = SecureCheck.checkAuthentication(request);
+        if (invalidStr != null) {
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("WWW-Authenticate", "");
+            return new ResponseEntity<>(invalidStr, headers, HttpStatus.UNAUTHORIZED);
+        }
+
+        // 2. check request-format
+        String absent = validate(request);
+        if (absent != null) {
+            String body = getBadResponse(absent).getBody();
+            return new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.BAD_REQUEST);
+        }
+        if(request.getQueryString()==null) {
+            return new ResponseEntity<>("Error: query string is null", new HttpHeaders(), HttpStatus.BAD_REQUEST);
+        }
+
+        // 3. check authorization
+        String endpoint = request.getParameter("endpointId");
+        String method = request.getParameter("method");
+
+        JwtStatusEnum status = SecureCheck.checkAuthorization(request);
+        if (!status.equals(JwtStatusEnum.Authorized)) {
+            return new ResponseEntity<>(status.toValue(), new HttpHeaders(), HttpStatus.FORBIDDEN);
+        }
+
         try {
-            // if not authenticated
-            if (invalid != null) {
-                return invalid;
-            }
-            String absent = validate(request);
-            // if bad parameters
-            if (absent != null) {
-                String body = getBadResponse(absent).getBody();
-                return new ResponseEntity<>(body, responseHeaders, HttpStatus.BAD_REQUEST);
-            }
-            String endpoint = request.getParameter("endpointId");
-            String method = request.getParameter("method");
-
-            JwtStatusEnum status = JwtAuthMgt.checkAuthorization(request);
-            if (!status.equals(JwtStatusEnum.Authorized)) {
-                return new ResponseEntity<>(status.toValue(), responseHeaders, HttpStatus.FORBIDDEN);
-            }
-
-            if(request.getQueryString()==null) {
-                return new ResponseEntity<>("query string is null", responseHeaders, HttpStatus.BAD_REQUEST);
-            }
             String body = getterService.exec(endpoint, method, request.getQueryString());
-            return new ResponseEntity<>(body, responseHeaders, HttpStatus.OK);
+            return new ResponseEntity<>(body, new HttpHeaders(), HttpStatus.OK);
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
-            return new ResponseEntity<>(ex.getMessage(), responseHeaders, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(ex.getMessage(), new HttpHeaders(), HttpStatus.BAD_REQUEST);
         }
     }
 

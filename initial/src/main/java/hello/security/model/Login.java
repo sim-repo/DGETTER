@@ -20,29 +20,13 @@ public class Login implements Serializable {
     private String name;
     private Date expire;
     private String encryptedPassword;
+    private String encodedPassword; //basic auth
     private String salt;
     private String token;
     private String oldToken;
     private HashSet<String> roles = new HashSet<>();
 
     public Login() {}
-
-    public Login(String name, String encryptedPassword, String salt, Date expire) {
-        super();
-        this.name = name;
-        this.encryptedPassword = encryptedPassword;
-        this.salt = salt;
-        this.expire = expire;
-    }
-
-    public Login(Integer id, String name, String encryptedPassword, String salt, Date expire) {
-        super();
-        this.id = id;
-        this.name = name;
-        this.encryptedPassword = encryptedPassword;
-        this.salt = salt;
-        this.expire = expire;
-    }
 
     public String getClazz() {
         return Login.class.getName();
@@ -64,6 +48,12 @@ public class Login implements Serializable {
     }
     public void setEncryptedPassword(String encryptedPassword) {
         this.encryptedPassword = encryptedPassword;
+    }
+    public String getEncodedPassword() {
+        return encodedPassword;
+    }
+    public void setEncodedPassword(String encodedPassword) {
+        this.encodedPassword = encodedPassword;
     }
     public Date getExpire() {
         return expire;
